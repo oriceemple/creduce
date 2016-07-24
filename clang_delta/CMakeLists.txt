@@ -34,6 +34,7 @@ llvm_map_components_to_libnames(LLVM_LIBS
   irreader
   mcparser
   option
+  profiledata
 )
 
 set(CLANG_LIBS
@@ -79,6 +80,8 @@ add_executable(clang_delta
   CopyPropagation.h
   EmptyStructToInt.cpp
   EmptyStructToInt.h
+  ExpressionDetector.cpp
+  ExpressionDetector.h
   InstantiateTemplateParam.cpp
   InstantiateTemplateParam.h
   InstantiateTemplateTypeParamToInt.cpp
