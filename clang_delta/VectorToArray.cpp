@@ -1,3 +1,13 @@
+//===----------------------------------------------------------------------===//
+// Copyright (c) 2016 The University of Utah
+// Copyright (c) 2016 Ori Brostovski <ori@ceemple.com>
+// Copyright (c) 2016 Ceemple Software Ltd
+// All rights reserved.
+//
+// This file is distributed under the University of Illinois Open Source
+// License.  See the file COPYING for details.
+//
+//===----------------------------------------------------------------------===//
 
 // Here is a quick command line for testing:
 // ./clang_delta --transformation=vector-to-array ~/empty.cpp
@@ -35,7 +45,7 @@ static const char *DescriptionMsg =
     "Try replacing vectors with arrays. It transforms the following code: \n\
   vector<int> v' \n\
 to \n\
-  int v[8]\n";
+  int v[10]\n";
 
 static RegisterTransformation<VectorToArray> Trans("vector-to-array",
                                                    DescriptionMsg);
@@ -43,20 +53,20 @@ static RegisterTransformation<VectorToArray> Trans("vector-to-array",
 class VectorToArrayCollectionVisitor
     : public RecursiveASTVisitor<VectorToArrayCollectionVisitor> {
 public:
-  explicit VectorToArrayCollectionVisitor(VectorToArray *instance)
-      : Consumer(instance) {}
+  explicit VectorToArrayCollectionVisitor(VectorToArray *Instance)
+      : Consumer(Instance) {}
 
   bool VisitNamedDecl(NamedDecl *D) { return true; }
 
   bool VisitClassTemplateDecl(ClassTemplateDecl *D) {
     if (Consumer->isInIncludedFile(D))
       return true;
-    auto *ns = dyn_cast<NamespaceDecl>(D->getDeclContext());
-    if (!ns)
+    auto *NS = dyn_cast<NamespaceDecl>(D->getDeclContext());
+    if (!NS)
       return true;
-    if (ns->getName() != "std")
+    if (NS->getName() != "std")
       return true;
-    if (!dyn_cast<TranslationUnitDecl>(ns->getDeclContext()))
+    if (!dyn_cast<TranslationUnitDecl>(NS->getDeclContext()))
       return true;
     if (!D->isThisDeclarationADefinition())
       return true;
@@ -91,22 +101,6 @@ public:
     return true;
   }
 
-  // bool VisitVarDecl(VarDecl *VD) {
-  //   if (Consumer->isInIncludedFile(VD))
-  //     return true;
-  //   if (!VD->isThisDeclarationADefinition())
-  //     return true;
-  //   if (VD->isInvalidDecl())
-  //     return true;
-
-  //   QualType QT = VD->getType();
-  //   const Type *T = QT->getTypePtr();
-  //   const CXXRecordDecl *RD = T->getAsCXXRecordDecl();
-  //   if (RD == nullptr)
-  //     return true;
-  //   continue from here
-
-  // }
 private:
   VectorToArray *Consumer;
 };
@@ -114,7 +108,7 @@ private:
 class VectorToArrayRewriteVisitor
     : public RecursiveASTVisitor<VectorToArrayRewriteVisitor> {
 private:
-  const std::string getVectorElemTypeName(VarDecl *VD) {
+  std::string getVectorElemTypeName(VarDecl *VD) {
     CXXRecordDecl *CXXRD = VD->getType().getTypePtr()->getAsCXXRecordDecl();
     auto CTSD = dyn_cast<ClassTemplateSpecializationDecl>(CXXRD);
     const TemplateArgument &TmplArg = CTSD->getTemplateArgs()[0];
@@ -156,6 +150,11 @@ public:
 private:
   VectorToArray *Consumer;
 };
+
+VectorToArray::~VectorToArray() {
+  delete RewriteVisitor;
+  delete CollectionVisitor;
+}
 
 void VectorToArray::Initialize(ASTContext &ctx) {
   Transformation::Initialize(ctx);
